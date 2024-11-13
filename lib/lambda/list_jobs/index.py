@@ -3,16 +3,27 @@ import redis
 import json
 import logging
 import os
+from typing import Any
+import decimal
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+REDIS_HOST = os.environ['REDIS_HOST']
+REDIS_PORT = os.environ['REDIS_PORT']
+TABLE_NAME = os.environ['TABLE_NAME']
+
 # Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table('YourDynamoDBTableName')
+table = dynamodb.Table(TABLE_NAME)
 
 # Initialize Redis client
-redis_client = redis.StrictRedis(host='localhost', port=6379, db=0)
+redis_client = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=0)
+
+def decimal_default(obj: Any) -> Any:
+    if isinstance(obj, decimal.Decimal):
+        return str(obj)
+    raise TypeError
 
 def query_dynamodb_by_exam(exam):
     response = table.query(
@@ -21,13 +32,13 @@ def query_dynamodb_by_exam(exam):
     return response['Items']
 
 def store_results_in_redis(exam, items):
-    redis_key = f"exam:{exam}"
-    redis_map = {item['jobId']: json.dumps(item) for item in items}
-    redis_client.hmset(redis_key, redis_map)
+    hash = f"exam:{exam}"
+    redis_map = {int(item['jobId']): json.dumps(item, default=decimal_default) for item in items}
+    redis_client.hset(hash, redis_map)
 
 def search_in_redis(exam, search_criteria):
-    redis_key = f"exam:{exam}"
-    items = redis_client.hgetall(redis_key)
+    hash = f"exam:{exam}"
+    items = redis_client.hgetall(hash)
     matching_items = []
 
     for job_id, item_json in items.items():
@@ -37,40 +48,19 @@ def search_in_redis(exam, search_criteria):
 
     return matching_items
 
-def handler(event, context):
-    REDIS_HOST = os.environ['REDIS_HOST']
-    REDIS_PORT = os.environ['REDIS_PORT']
+def handler(event, context):    
+    exam = event['exam']
+    search_criteria = event['searchCriteria']
     
-    exam = event['exam']  # Replace with your exam value
-    items = query_dynamodb_by_exam(exam)
-    for item in items:
-        logger.info(item)
-    # store_results_in_redis(exam, items)
-    # logger.info(f"Stored {len(items)} items in Redis for exam '{exam}'.")
+    # Check if exam data is present in Redis
+    hash = f"exam:{exam}"
+    if redis_client.hlen(hash) > 0:
+        logger.info(f"Exam '{exam}' found in Redis.")
+    else:
+        logger.info(f"Exam '{exam}' not found in Redis. Querying DynamoDB.")
+        items = query_dynamodb_by_exam(exam)
+        store_results_in_redis(exam, items)
+        logger.info(f"Stored {len(items)} items in Redis for exam '{exam}'.")
 
-    # # Example search criteria
-    # search_criteria = {
-    #     'key1': 'value1',
-    #     'key2': 'value2'
-    # }
-    # matching_items = search_in_redis(exam, search_criteria)
-    # logger.info(f"Found {len(matching_items)} matching items.")
-
-# def main():
-#     exam = 'example_exam'  # Replace with your exam value
-#     items = query_dynamodb_by_exam(exam)
-#     store_results_in_redis(exam, items)
-#     print(f"Stored {len(items)} items in Redis for exam '{exam}'.")
-
-#     # Example search criteria
-#     search_criteria = {
-#         'key1': 'value1',
-#         'key2': 'value2'
-#     }
-#     matching_items = search_in_redis(exam, search_criteria)
-#     print(f"Found {len(matching_items)} matching items.")
-#     for item in matching_items:
-#         print(item)
-
-# if __name__ == "__main__":
-#     main()
+    matching_items = search_in_redis(exam, search_criteria)
+    logger.info(f"Found {len(matching_items)} matching items.")

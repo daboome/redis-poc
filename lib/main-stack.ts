@@ -18,6 +18,6 @@ export class MainStack extends cdk.Stack {
 
       const redisStack = new RedisStack(this, 'TheRedisStack');
 
-      const lambdaStack = new LambdaStack(this, 'TheLambdaStack', redisStack);
+      const lambdaStack = new LambdaStack(this, 'TheLambdaStack', redisStack, dynamoDbStack.jobInstanceTableName);
     }
 }

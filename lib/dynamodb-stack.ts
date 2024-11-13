@@ -3,14 +3,14 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as cdk from 'aws-cdk-lib';
 
 export class DynamoDbStack extends cdk.Stack {
-  public readonly jobInstanceTableName = 'jobInstanceDynamoDbTable';
+  private readonly _jobInstanceTableName = 'jobInstanceDynamoDbTable';
 
   constructor(scope: Construct, id: string, bucketName: string, jobInstancePrefix: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     new dynamodb.CfnTable(
       this,
-      this.jobInstanceTableName,
+      this._jobInstanceTableName,
       {
         keySchema: [
           {
@@ -22,7 +22,7 @@ export class DynamoDbStack extends cdk.Stack {
             keyType: 'RANGE',
           }
         ],
-        tableName: this.jobInstanceTableName,
+        tableName: this._jobInstanceTableName,
         attributeDefinitions: [
           {
             attributeName: 'exam',
@@ -52,5 +52,9 @@ export class DynamoDbStack extends cdk.Stack {
         },
       }
     );
+  }
+
+  get jobInstanceTableName(): string {
+    return this._jobInstanceTableName;
   }
 }
