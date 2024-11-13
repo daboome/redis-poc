@@ -64,3 +64,5 @@ def handler(event, context):
 
     matching_items = search_in_redis(exam, search_criteria)
     logger.info(f"Found {len(matching_items)} matching items.")
+    for item in matching_items:
+        logger.info(item)

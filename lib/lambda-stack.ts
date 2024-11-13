@@ -19,10 +19,10 @@ export class LambdaStack extends cdk.Stack {
 
       const dynamoDbTable = dynamodb.Table.fromTableName(this, 'ImportedTable', dynamoDbTableName);
 
-      // Create a Lambda function
-      const lambdaFunction = new lambda.Function(this, 'RedisLambdaFunction', {
+      // Create a Lambda function to Query jobs
+      const jobs_query = new lambda.Function(this, 'JobsQueryRedisLambdaFunction', {
         runtime: lambda.Runtime.PYTHON_3_12,
-        code: lambda.Code.fromAsset('lib/lambda/list_jobs'), // Assumes your Lambda code is in the 'lambda' directory
+        code: lambda.Code.fromAsset('lib/lambda/jobs_query'), // Assumes your Lambda code is in the 'lambda' directory
         handler: 'index.handler',
         vpc: redisPocStack.redisVpc,
         securityGroups: [redisPocStack.redisSecurityGroup],
@@ -35,12 +35,36 @@ export class LambdaStack extends cdk.Stack {
       });
 
       // Grant the Lambda function permissions to access the DynamoDB table
-      dynamoDbTable.grantReadData(lambdaFunction);
+      dynamoDbTable.grantReadData(jobs_query);
 
       // Grant the Lambda function permissions to access the Redis cluster
-      lambdaFunction.addToRolePolicy(new iam.PolicyStatement({
+      jobs_query.addToRolePolicy(new iam.PolicyStatement({
         actions: ['elasticache:DescribeCacheClusters'],
         resources: ['*']
       }));
+
+      // Create a Lambda function to query examinee
+      const jobs_search = new lambda.Function(this, 'JobsSearchRedisLambdaFunction', {
+        runtime: lambda.Runtime.PYTHON_3_12,
+        code: lambda.Code.fromAsset('lib/lambda/jobs_search'), // Assumes your Lambda code is in the 'lambda' directory
+        handler: 'index.handler',
+        vpc: redisPocStack.redisVpc,
+        securityGroups: [redisPocStack.redisSecurityGroup],
+        layers: [redisLayer],
+        environment: {
+          TABLE_NAME: dynamoDbTableName,
+          REDIS_HOST: redisPocStack.redisHost,
+          REDIS_PORT: redisPocStack.redisPort
+        }
+      });
+
+      // Grant the Lambda function permissions to access the DynamoDB table
+      dynamoDbTable.grantReadData(jobs_search);
+
+      // Grant the Lambda function permissions to access the Redis cluster
+      jobs_search.addToRolePolicy(new iam.PolicyStatement({
+        actions: ['elasticache:DescribeCacheClusters'],
+        resources: ['*']
+      })); 
     }
 }
