@@ -7,64 +7,83 @@ import { RedisStack } from './redis-stack';
 
 export class LambdaStack extends cdk.Stack {
 
-    constructor(scope: Construct, id: string, redisPocStack: RedisStack, dynamoDbTableName: string, props?: cdk.StackProps) {
-      super(scope, id, props);
+  public readonly queryJobsLambdaFunction: lambda.IFunction;
 
-      const redisLayer = new lambda.LayerVersion(this, 'RedisLayer', {
-        layerVersionName: 'RedisLayer',
-        description: 'A layer that contains the Redis client library',
-        code: lambda.Code.fromAsset('asset/zip/redis_layer.zip'),
-        compatibleRuntimes: [lambda.Runtime.PYTHON_3_12]
-      });
+  constructor(scope: Construct, id: string, redisPocStack: RedisStack, dynamoDbTableName: string, props?: cdk.StackProps) {
+    super(scope, id, props);
 
-      const dynamoDbTable = dynamodb.Table.fromTableName(this, 'ImportedTable', dynamoDbTableName);
+    const redisLayer = new lambda.LayerVersion(this, 'RedisLayer', {
+      layerVersionName: 'RedisLayer',
+      description: 'A layer that contains the Redis client library',
+      code: lambda.Code.fromAsset('asset/zip/redis_layer.zip'),
+      compatibleRuntimes: [lambda.Runtime.PYTHON_3_12]
+    });
 
-      // Create a Lambda function to Query jobs
-      const jobs_query = new lambda.Function(this, 'JobsQueryRedisLambdaFunction', {
-        runtime: lambda.Runtime.PYTHON_3_12,
-        code: lambda.Code.fromAsset('lib/lambda/jobs_query'), // Assumes your Lambda code is in the 'lambda' directory
-        handler: 'index.handler',
-        vpc: redisPocStack.redisVpc,
-        securityGroups: [redisPocStack.redisSecurityGroup],
-        layers: [redisLayer],
-        environment: {
-          TABLE_NAME: dynamoDbTableName,
-          REDIS_HOST: redisPocStack.redisHost,
-          REDIS_PORT: redisPocStack.redisPort
-        }
-      });
+    const dynamoDbTable = dynamodb.Table.fromTableName(this, 'ImportedTable', dynamoDbTableName);
 
-      // Grant the Lambda function permissions to access the DynamoDB table
-      dynamoDbTable.grantReadData(jobs_query);
+    // Create a Lambda function to Query Jobs from Redis
+    const jobs_query = new lambda.Function(this, 'JobsQueryRedisLambdaFunction', {
+      runtime: lambda.Runtime.PYTHON_3_12,
+      code: lambda.Code.fromAsset('lib/lambda/jobs_query'), // Assumes your Lambda code is in the 'lambda' directory
+      handler: 'index.handler',
+      vpc: redisPocStack.redisVpc,
+      securityGroups: [redisPocStack.redisSecurityGroup],
+      layers: [redisLayer],
+      environment: {
+        TABLE_NAME: dynamoDbTableName,
+        REDIS_HOST: redisPocStack.redisHost,
+        REDIS_PORT: redisPocStack.redisPort
+      }
+    });
 
-      // Grant the Lambda function permissions to access the Redis cluster
-      jobs_query.addToRolePolicy(new iam.PolicyStatement({
-        actions: ['elasticache:DescribeCacheClusters'],
-        resources: ['*']
-      }));
+    // Grant the Lambda function permissions to access the DynamoDB table
+    dynamoDbTable.grantReadData(jobs_query);
 
-      // Create a Lambda function to query examinee
-      const jobs_search = new lambda.Function(this, 'JobsSearchRedisLambdaFunction', {
-        runtime: lambda.Runtime.PYTHON_3_12,
-        code: lambda.Code.fromAsset('lib/lambda/jobs_search'), // Assumes your Lambda code is in the 'lambda' directory
-        handler: 'index.handler',
-        vpc: redisPocStack.redisVpc,
-        securityGroups: [redisPocStack.redisSecurityGroup],
-        layers: [redisLayer],
-        environment: {
-          TABLE_NAME: dynamoDbTableName,
-          REDIS_HOST: redisPocStack.redisHost,
-          REDIS_PORT: redisPocStack.redisPort
-        }
-      });
+    // Grant the Lambda function permissions to access the Redis cluster
+    jobs_query.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['elasticache:DescribeCacheClusters'],
+      resources: ['*']
+    }));
 
-      // Grant the Lambda function permissions to access the DynamoDB table
-      dynamoDbTable.grantReadData(jobs_search);
+    // Create a Lambda function to Search Jobs from Redis
+    const jobs_search = new lambda.Function(this, 'JobsSearchRedisLambdaFunction', {
+      runtime: lambda.Runtime.PYTHON_3_12,
+      code: lambda.Code.fromAsset('lib/lambda/jobs_search'), // Assumes your Lambda code is in the 'lambda' directory
+      handler: 'index.handler',
+      vpc: redisPocStack.redisVpc,
+      securityGroups: [redisPocStack.redisSecurityGroup],
+      layers: [redisLayer],
+      environment: {
+        TABLE_NAME: dynamoDbTableName,
+        REDIS_HOST: redisPocStack.redisHost,
+        REDIS_PORT: redisPocStack.redisPort
+      }
+    });
 
-      // Grant the Lambda function permissions to access the Redis cluster
-      jobs_search.addToRolePolicy(new iam.PolicyStatement({
-        actions: ['elasticache:DescribeCacheClusters'],
-        resources: ['*']
-      })); 
-    }
+    // Grant the Lambda function permissions to access the DynamoDB table
+    dynamoDbTable.grantReadData(jobs_search);
+
+    // Grant the Lambda function permissions to access the Redis cluster
+    jobs_search.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['elasticache:DescribeCacheClusters'],
+      resources: ['*']
+    })); 
+
+    // Create a Lambda function to Query Jobs from DynamoDB
+    const queryJobsLambdaFunction = new lambda.Function(this, 'JobsQueryDynamoDbLambdaFunction', {
+      runtime: lambda.Runtime.PYTHON_3_12,
+      code: lambda.Code.fromAsset('lib/lambda/http_jobs_query'), // Assumes your Lambda code is in the 'lambda' directory
+      handler: 'index.handler',
+      environment: {
+        TABLE_NAME: dynamoDbTableName,
+        REDIS_HOST: redisPocStack.redisHost,
+        REDIS_PORT: redisPocStack.redisPort
+      }
+    });
+
+    this.queryJobsLambdaFunction = queryJobsLambdaFunction;
+
+    // Grant the Lambda function permissions to access the DynamoDB table
+    dynamoDbTable.grantReadData(queryJobsLambdaFunction);
+  }
 }
