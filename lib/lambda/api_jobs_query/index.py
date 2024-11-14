@@ -16,6 +16,7 @@ def decimal_default(obj: Any) -> Any:
     raise TypeError
 
 def handler(event, context):
+    logger.info(event)
     # Initialize a session using Amazon DynamoDB
     dynamodb = boto3.resource('dynamodb')
     

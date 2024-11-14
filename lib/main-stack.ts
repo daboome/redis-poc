@@ -3,8 +3,9 @@ import { Construct } from 'constructs';
 import { BucketStack } from './bucket-stack';
 import { DynamoDbStack } from './dynamodb-stack';
 import { RedisStack } from './redis-stack';
-import { LambdaStack } from './lambda-stack';
-import { HttpStack } from './http-stack';
+import { ServingLambdaStack } from './serving-lambda-stack';
+import { ApiStack } from './api-stack';
+import { CallingLambdaStack } from './calling-lambda-stack';
 
 export class MainStack extends cdk.Stack {
 
@@ -19,8 +20,10 @@ export class MainStack extends cdk.Stack {
 
       const redisStack = new RedisStack(this, 'TheRedisStack');
 
-      const lambdaStack = new LambdaStack(this, 'TheLambdaStack', redisStack, dynamoDbStack.jobInstanceTableName);
+      const servingLambdaStack = new ServingLambdaStack(this, 'TheServingLambdaStack', redisStack, dynamoDbStack.jobInstanceTableName);
 
-      const httpStack = new HttpStack(this, 'TheHttpStack', lambdaStack);
+      const apiStack = new ApiStack(this, 'TheApiStack', servingLambdaStack);
+
+      const callingLambdaStack = new CallingLambdaStack(this, 'TheCallingLambdaStack', redisStack, dynamoDbStack.jobInstanceTableName, apiStack);
     }
 }

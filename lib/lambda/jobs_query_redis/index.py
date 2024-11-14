@@ -36,7 +36,7 @@ def store_results_in_redis(exam, items):
     redis_map = {int(item['jobId']): json.dumps(item, default=decimal_default) for item in items}
     redis_client.hset(hash, redis_map)
 
-def search_in_redis(exam, search_criteria):
+def query_in_redis(exam, search_criteria):
     hash = f"exam:{exam}"
     items = redis_client.hgetall(hash)
     matching_items = []
@@ -50,7 +50,7 @@ def search_in_redis(exam, search_criteria):
 
 def handler(event, context):    
     exam = event['exam']
-    search_criteria = event['searchCriteria']
+    query_criteria = event['queryCriteria']
     
     # Check if exam data is present in Redis
     hash = f"exam:{exam}"
@@ -62,7 +62,7 @@ def handler(event, context):
         store_results_in_redis(exam, items)
         logger.info(f"Stored {len(items)} items in Redis for exam '{exam}'.")
 
-    matching_items = search_in_redis(exam, search_criteria)
+    matching_items = query_in_redis(exam, query_criteria)
     logger.info(f"Found {len(matching_items)} matching items.")
     for item in matching_items:
         logger.info(item)
