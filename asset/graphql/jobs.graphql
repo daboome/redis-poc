@@ -34,7 +34,8 @@ input QueryRequest {
 }
 
 type Query {
-    jobsQuery(queryRequest: QueryRequest!): JobsResponse
+    jobsQueryApi(queryRequest: QueryRequest!): JobsResponse
+    jobsQueryRedis(queryRequest: QueryRequest!): JobsResponse
 }
 
 schema {

@@ -23,10 +23,19 @@ export class JobsAppsSyncStack extends cdk.Stack {
       });
 
       jobsGraphQlApi
-        .addLambdaDataSource('JobsQueryLambda', callingLambdaStack.appsyncJobsQueryApi)
-        .createResolver('JobsQueryResolver', {
+        .addLambdaDataSource('JobsQueryApiLambda', callingLambdaStack.appsyncJobsQueryApi)
+        .createResolver('JobsQueryApiResolver', {
           typeName: 'Query',
-          fieldName: 'jobsQuery',
+          fieldName: 'jobsQueryApi',
+          requestMappingTemplate: appsync.MappingTemplate.lambdaRequest(),
+          responseMappingTemplate: appsync.MappingTemplate.lambdaResult()
+        });
+
+      jobsGraphQlApi
+        .addLambdaDataSource('JobsQueryRedisLambda', callingLambdaStack.appsyncJobsQueryRedis)
+        .createResolver('JobsQueryRedisResolver', {
+          typeName: 'Query',
+          fieldName: 'jobsQueryRedis',
           requestMappingTemplate: appsync.MappingTemplate.lambdaRequest(),
           responseMappingTemplate: appsync.MappingTemplate.lambdaResult()
         });

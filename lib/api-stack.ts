@@ -35,6 +35,7 @@ export class ApiStack extends cdk.Stack {
           methodOptions: {
               '/query-jobs/GET': {
               cachingEnabled: true,
+              cacheTtl: cdk.Duration.seconds(30),
             }
           }
         }

@@ -9,6 +9,8 @@ import { ApiStack } from './api-stack';
 export class CallingLambdaStack extends cdk.Stack {
 
   public readonly appsyncJobsQueryApi: lambda.IFunction;
+  public readonly appsyncJobsQueryRedis: lambda.IFunction;
+  public readonly appsyncJobsSearchRedis: lambda.IFunction;
 
   constructor(scope: Construct, id: string, redisPocStack: RedisStack, dynamoDbTableName: string, apiStack: ApiStack, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -30,13 +32,14 @@ export class CallingLambdaStack extends cdk.Stack {
     const dynamoDbTable = dynamodb.Table.fromTableName(this, 'ImportedTable', dynamoDbTableName);
 
     // Create a Lambda function to Query Jobs from Redis
-    const jobs_query_redis = new lambda.Function(this, 'JobsQueryRedisLambdaFunction', {
+    const appsyncJobsQueryRedis = new lambda.Function(this, 'JobsQueryRedisLambdaFunction', {
       runtime: lambda.Runtime.PYTHON_3_12,
-      code: lambda.Code.fromAsset('lib/lambda/jobs_query_redis'), // Assumes your Lambda code is in the 'lambda' directory
+      code: lambda.Code.fromAsset('lib/lambda/appsync_jobs_query_redis'), // Assumes your Lambda code is in the 'lambda' directory
       handler: 'index.handler',
       vpc: redisPocStack.redisVpc,
       securityGroups: [redisPocStack.redisSecurityGroup],
       layers: [redisLayer],
+      timeout: cdk.Duration.seconds(30),
       environment: {
         TABLE_NAME: dynamoDbTableName,
         REDIS_HOST: redisPocStack.redisHost,
@@ -45,22 +48,25 @@ export class CallingLambdaStack extends cdk.Stack {
     });
 
     // Grant the Lambda function permissions to access the DynamoDB table
-    dynamoDbTable.grantReadData(jobs_query_redis);
+    dynamoDbTable.grantReadData(appsyncJobsQueryRedis);
 
     // Grant the Lambda function permissions to access the Redis cluster
-    jobs_query_redis.addToRolePolicy(new iam.PolicyStatement({
+    appsyncJobsQueryRedis.addToRolePolicy(new iam.PolicyStatement({
       actions: ['elasticache:DescribeCacheClusters'],
       resources: ['*']
     }));
 
+    this.appsyncJobsQueryRedis = appsyncJobsQueryRedis;
+
     // Create a Lambda function to Search Jobs from Redis
-    const jobs_search_redis = new lambda.Function(this, 'JobsSearchRedisLambdaFunction', {
+    const appsyncJobsSearchRedis = new lambda.Function(this, 'JobsSearchRedisLambdaFunction', {
       runtime: lambda.Runtime.PYTHON_3_12,
-      code: lambda.Code.fromAsset('lib/lambda/jobs_search_redis'), // Assumes your Lambda code is in the 'lambda' directory
+      code: lambda.Code.fromAsset('lib/lambda/appsync_jobs_search_redis'), // Assumes your Lambda code is in the 'lambda' directory
       handler: 'index.handler',
       vpc: redisPocStack.redisVpc,
       securityGroups: [redisPocStack.redisSecurityGroup],
       layers: [redisLayer],
+      timeout: cdk.Duration.seconds(30),
       environment: {
         TABLE_NAME: dynamoDbTableName,
         REDIS_HOST: redisPocStack.redisHost,
@@ -69,13 +75,15 @@ export class CallingLambdaStack extends cdk.Stack {
     });
 
     // Grant the Lambda function permissions to access the DynamoDB table
-    dynamoDbTable.grantReadData(jobs_search_redis);
+    dynamoDbTable.grantReadData(appsyncJobsSearchRedis);
 
     // Grant the Lambda function permissions to access the Redis cluster
-    jobs_search_redis.addToRolePolicy(new iam.PolicyStatement({
+    appsyncJobsSearchRedis.addToRolePolicy(new iam.PolicyStatement({
       actions: ['elasticache:DescribeCacheClusters'],
       resources: ['*']
-    })); 
+    }));
+
+    this.appsyncJobsSearchRedis = appsyncJobsSearchRedis;
 
     // Create a Lambda function to Query Jobs from RestApi
     const appsyncJobsQueryApi = new lambda.Function(this, 'JobsQueryApiLambdaFunction', {
@@ -83,6 +91,7 @@ export class CallingLambdaStack extends cdk.Stack {
       code: lambda.Code.fromAsset('lib/lambda/appsync_jobs_query_api'), // Assumes your Lambda code is in the 'lambda' directory
       handler: 'index.handler',
       layers: [requestsLayer],
+      timeout: cdk.Duration.seconds(30),
       environment: {
         API_ENDPOINT: apiStack.restApiEndpoint
       }
