@@ -6,6 +6,7 @@ import { RedisStack } from './redis-stack';
 import { ServingLambdaStack } from './serving-lambda-stack';
 import { ApiStack } from './api-stack';
 import { CallingLambdaStack } from './calling-lambda-stack';
+import { JobsAppsSyncStack } from './jobs-appsync-stack';
 
 export class MainStack extends cdk.Stack {
 
@@ -25,5 +26,7 @@ export class MainStack extends cdk.Stack {
       const apiStack = new ApiStack(this, 'TheApiStack', servingLambdaStack);
 
       const callingLambdaStack = new CallingLambdaStack(this, 'TheCallingLambdaStack', redisStack, dynamoDbStack.jobInstanceTableName, apiStack);
+
+      const jobsAppsSyncStack = new JobsAppsSyncStack(this, 'TheJobsAppsSyncStack', callingLambdaStack);
     }
 }

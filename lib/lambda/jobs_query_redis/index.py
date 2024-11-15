@@ -22,7 +22,7 @@ redis_client = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=0)
 
 def decimal_default(obj: Any) -> Any:
     if isinstance(obj, decimal.Decimal):
-        return str(obj)
+        return int(obj)
     raise TypeError
 
 def query_dynamodb_by_exam(exam):

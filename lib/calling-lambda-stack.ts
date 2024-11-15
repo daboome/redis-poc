@@ -8,7 +8,7 @@ import { ApiStack } from './api-stack';
 
 export class CallingLambdaStack extends cdk.Stack {
 
-  public readonly queryJobsLambdaFunction: lambda.IFunction;
+  public readonly appsyncJobsQueryApi: lambda.IFunction;
 
   constructor(scope: Construct, id: string, redisPocStack: RedisStack, dynamoDbTableName: string, apiStack: ApiStack, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -78,14 +78,16 @@ export class CallingLambdaStack extends cdk.Stack {
     })); 
 
     // Create a Lambda function to Query Jobs from RestApi
-    const jobs_query_api = new lambda.Function(this, 'JobsQueryApiLambdaFunction', {
+    const appsyncJobsQueryApi = new lambda.Function(this, 'JobsQueryApiLambdaFunction', {
       runtime: lambda.Runtime.PYTHON_3_12,
-      code: lambda.Code.fromAsset('lib/lambda/jobs_query_api'), // Assumes your Lambda code is in the 'lambda' directory
+      code: lambda.Code.fromAsset('lib/lambda/appsync_jobs_query_api'), // Assumes your Lambda code is in the 'lambda' directory
       handler: 'index.handler',
       layers: [requestsLayer],
       environment: {
         API_ENDPOINT: apiStack.restApiEndpoint
       }
     });
+
+    this.appsyncJobsQueryApi = appsyncJobsQueryApi;
   }
 }

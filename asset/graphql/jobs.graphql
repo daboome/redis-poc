@@ -1,0 +1,42 @@
+enum JobStatus {
+    RUNNING
+    UNKNOWN
+    COMPLETE
+}
+
+enum JobType {
+    SCORE_ITEMS
+    SCORE_ISETS
+    SCORE_PCT
+}
+
+type Job {
+    exam: String!
+    jobId: Int!
+    createDate: String!
+    jobDescription: String!
+    jobStatus: JobStatus!
+    jobType: JobType!
+    jobParams: String
+}
+
+type JobsResponse {
+    jobs: [Job]
+    elapsedTime: String!
+}
+
+input QueryRequest {
+    exam: String
+    jobId: Int
+    jobStatus: JobStatus
+    jobType: JobType
+    jobDescription: String
+}
+
+type Query {
+    jobsQuery(queryRequest: QueryRequest!): JobsResponse
+}
+
+schema {
+    query: Query
+}
