@@ -11,12 +11,14 @@ API_ENDPOINT = os.environ['API_ENDPOINT']
 
 def query_in_response(items, search_criteria):
     matching_items = []
+    matching_items_count = 0
 
     for item in items:
         if all(item.get(key) == value for key, value in search_criteria.items()):
             matching_items.append(item)
+            matching_items_count += 1
 
-    return matching_items
+    return matching_items, matching_items_count
 
 def get_query_request_value(event, key, default=None):
     value = event.get(key)
@@ -56,7 +58,7 @@ def handler(event, context):
     response = requests.get(f"{API_ENDPOINT}/query-jobs", params={"exam": query_criteria['exam']})
     items = response.json()    
 
-    matching_items = query_in_response(items, query_criteria)
+    matching_items, matching_items_count = query_in_response(items, query_criteria)
     logger.info(f"Found {len(matching_items)} matching items.")
     for item in matching_items:
         logger.info(item)
@@ -66,5 +68,6 @@ def handler(event, context):
         
     return {
         'jobs': matching_items,
+        'jobsCount': matching_items_count,
         'elapsedTime': elapsed_time
     }

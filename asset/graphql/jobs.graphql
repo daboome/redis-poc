@@ -22,6 +22,7 @@ type Job {
 
 type JobsResponse {
     jobs: [Job]
+    jobsCount: Int!
     elapsedTime: String!
 }
 

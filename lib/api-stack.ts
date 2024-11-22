@@ -32,10 +32,11 @@ export class ApiStack extends cdk.Stack {
         restApiName: 'MyRestApi',
         deployOptions: {
           cacheClusterEnabled: true,
+          stageName: 'api',
           methodOptions: {
               '/query-jobs/GET': {
               cachingEnabled: true,
-              cacheTtl: cdk.Duration.seconds(30),
+              cacheTtl: cdk.Duration.seconds(60),
             }
           }
         }

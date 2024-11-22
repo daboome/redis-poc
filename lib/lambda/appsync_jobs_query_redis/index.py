@@ -33,21 +33,24 @@ def query_dynamodb_by_exam(exam):
     return response['Items']
 
 def store_results_in_redis(exam, items):
-    hash = f"exam:{exam}"
+    hash_key = f"exam:{exam}"
     redis_map = {int(item['jobId']): json.dumps(item, default=decimal_default) for item in items}
-    redis_client.hmset(hash, redis_map)
+    redis_client.hmset(hash_key, redis_map)
+    redis_client.expire(hash_key, 60)  # Set TTL for the hash
 
 def query_in_redis(exam, search_criteria):
     hash = f"exam:{exam}"
     items = redis_client.hgetall(hash)
     matching_items = []
+    matching_items_count = 0
 
     for _, item_json in items.items():
         item = json.loads(item_json)
         if all(item.get(key) == value for key, value in search_criteria.items()):
             matching_items.append(item)
+            matching_items_count += 1
 
-    return matching_items
+    return matching_items, matching_items_count
 
 def get_query_request_value(event, key, default=None):
     value = event.get(key)
@@ -96,7 +99,7 @@ def handler(event, context):
         store_results_in_redis(exam, items)
         logger.info(f"Stored {len(items)} items in Redis for exam '{exam}'.")
 
-    matching_items = query_in_redis(exam, query_criteria)
+    matching_items, matching_items_count = query_in_redis(exam, query_criteria)
     logger.info(f"Found {len(matching_items)} matching items.")
     for item in matching_items:
         logger.info(item)
@@ -106,5 +109,6 @@ def handler(event, context):
         
     return {
         'jobs': matching_items,
+        'jobsCount': matching_items_count,
         'elapsedTime': elapsed_time
     }
