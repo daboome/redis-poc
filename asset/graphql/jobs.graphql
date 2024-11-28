@@ -27,6 +27,7 @@ type JobsResponse {
 }
 
 input QueryRequest {
+    limit: Int
     exam: String
     jobId: Int
     jobStatus: JobStatus

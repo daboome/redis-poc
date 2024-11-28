@@ -6,6 +6,7 @@ import os
 from typing import Any
 import decimal
 import time
+from boto3.dynamodb.conditions import Key
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -20,6 +21,29 @@ table = dynamodb.Table(TABLE_NAME)
 
 # Initialize Redis client
 redis_client = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=0)
+
+def query_limited_items(exam_name: str, limit: int) -> list:
+    total_items = []
+    last_evaluated_key = None
+
+    while len(total_items) < limit:
+        response = table.query(
+            KeyConditionExpression=Key('exam').eq(exam_name),
+            Limit=min(limit - len(total_items), 1000),
+            ExclusiveStartKey=last_evaluated_key
+        ) if last_evaluated_key else table.query(
+            KeyConditionExpression=Key('exam').eq(exam_name),
+            Limit=min(limit - len(total_items), 1000)
+        )
+
+        total_items.extend(response['Items'])
+
+        if 'LastEvaluatedKey' not in response:
+            break
+
+        last_evaluated_key = response['LastEvaluatedKey']
+
+    return total_items
 
 def decimal_default(obj: Any) -> Any:
     if isinstance(obj, decimal.Decimal):
@@ -88,6 +112,7 @@ def handler(event, context):
     query_criteria = filter_query_criteria(raw_query)
     
     exam = query_criteria['exam']
+    limit = query_request.get('limit', 1000)
     
     hash = f"exam:{exam}"
     
@@ -95,9 +120,9 @@ def handler(event, context):
         logger.info(f"Exam '{exam}' found in Redis.")
     else:
         logger.info(f"Exam '{exam}' not found in Redis. Querying DynamoDB.")
-        items = query_dynamodb_by_exam(exam)
-        store_results_in_redis(exam, items)
-        logger.info(f"Stored {len(items)} items in Redis for exam '{exam}'.")
+        limited_items = query_limited_items(exam, limit)
+        store_results_in_redis(exam, limited_items)
+        logger.info(f"Stored {len(limited_items)} items in Redis for exam '{exam}'.")
 
     matching_items, matching_items_count = query_in_redis(exam, query_criteria)
     logger.info(f"Found {len(matching_items)} matching items.")

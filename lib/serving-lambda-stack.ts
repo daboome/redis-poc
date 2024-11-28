@@ -18,7 +18,8 @@ export class ServingLambdaStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('lib/lambda/api_jobs_query'), // Assumes your Lambda code is in the 'lambda' directory
       handler: 'index.handler',
-      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      timeout: cdk.Duration.minutes(5),
       environment: {
         TABLE_NAME: dynamoDbTableName,
         REDIS_HOST: redisPocStack.redisHost,

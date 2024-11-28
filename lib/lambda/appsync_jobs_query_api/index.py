@@ -55,7 +55,12 @@ def handler(event, context):
     
     query_criteria = filter_query_criteria(raw_query)
     
-    response = requests.get(f"{API_ENDPOINT}/query-jobs", params={"exam": query_criteria['exam']})
+    get_params = {"exam": query_criteria['exam']}
+    
+    if 'limit' in query_request:
+        get_params['limit'] = query_request['limit']
+    
+    response = requests.get(f"{API_ENDPOINT}/query-jobs", get_params)
     items = response.json()    
 
     matching_items, matching_items_count = query_in_response(items, query_criteria)

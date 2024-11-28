@@ -39,7 +39,8 @@ export class CallingLambdaStack extends cdk.Stack {
       vpc: redisPocStack.redisVpc,
       securityGroups: [redisPocStack.redisSecurityGroup],
       layers: [redisLayer],
-      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      timeout: cdk.Duration.minutes(5),
       environment: {
         TABLE_NAME: dynamoDbTableName,
         REDIS_HOST: redisPocStack.redisHost,
@@ -66,7 +67,8 @@ export class CallingLambdaStack extends cdk.Stack {
       vpc: redisPocStack.redisVpc,
       securityGroups: [redisPocStack.redisSecurityGroup],
       layers: [redisLayer],
-      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      timeout: cdk.Duration.minutes(5),
       environment: {
         TABLE_NAME: dynamoDbTableName,
         REDIS_HOST: redisPocStack.redisHost,
@@ -91,7 +93,8 @@ export class CallingLambdaStack extends cdk.Stack {
       code: lambda.Code.fromAsset('lib/lambda/appsync_jobs_query_api'), // Assumes your Lambda code is in the 'lambda' directory
       handler: 'index.handler',
       layers: [requestsLayer],
-      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      timeout: cdk.Duration.minutes(5),
       environment: {
         API_ENDPOINT: apiStack.restApiEndpoint
       }
